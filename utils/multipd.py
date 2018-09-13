@@ -53,12 +53,12 @@ def worker(in_file):
         df['rec_text'] = func.split_lines(df['rec_text'], '\n')
         df['cleaned_text'] = func.split_lines(df['cleaned_text'], '\n')
         with open(out_file+'.rec', 'wt') as fd:
-            run_map(lambda line: fd.write('%s\n' % line.strip()), df['rec_text'][:-1])
-            run_map(lambda line: fd.write('%s\n' % line.strip()), df['rec_text'][-1:])
+            run_map(lambda line: fd.write('%s\n' % str(line).strip()), df['rec_text'][:-1])
+            run_map(lambda line: fd.write('%s\n' % str(line).strip()), df['rec_text'][-1:])
         df.pop('rec_text', None)
         with open(out_file+'.clean', 'wt') as fd:
-            run_map(lambda line: fd.write('%s\n' % line.strip()), df['cleaned_text'][:-1])
-            run_map(lambda line: fd.write('%s\n' % line.strip()), df['cleaned_text'][-1:])
+            run_map(lambda line: fd.write('%s\n' % str(line).strip()), df['cleaned_text'][:-1])
+            run_map(lambda line: fd.write('%s\n' % str(line).strip()), df['cleaned_text'][-1:])
 
         #Count to words
         word_counts = run_map(lambda line: collections.Counter(line.strip().split()), df['cleaned_text'])
