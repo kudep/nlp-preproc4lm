@@ -30,7 +30,8 @@ def timeout_initializer(udpipeline, out_dir_prefix, timeout_duration):
 def worker(in_file):
     try:
         out_file = FLAGS.out_dir_prefix + '/' + in_file.split('/')[-1]
-        df = pd.read_fwf(in_file,  header=None).rename(columns={0:'text'})
+        # df = pd.read_fwf(in_file,  header=None).rename(columns={0:'text'})
+        df = pd.DataFrame({'text':open(in_file).readlines()})
         df['text'] = df['text'].apply(func.skip_empty)
         df = df.dropna()
         df['rec'] = df['text'].apply(func.get_rec_info)
