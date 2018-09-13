@@ -107,9 +107,13 @@ def recovery(in_row):
     return line
 
 
-def udpipe_sent_and_tok(in_line, udpipeline):
-    line = udpipeline.process(in_line).split('\n')
-    return line
+def get_udpipe_sent_and_tok(udpipeline):
+
+    def udpipe_sent_and_tok(in_line):
+        line = udpipeline.process(in_line).split('\n')
+        return line
+    return udpipe_sent_and_tok
+
 
 def nltk_sent_and_tok(in_line):
     sentences = ru_sent_tokenize(in_line)
@@ -138,14 +142,11 @@ def normalization2(in_line):
 def lower_case(in_line):
     return in_line.lower()
 
-def split_df(df,target_column,separator):
-    def splitListToRows(row,row_accumulator,target_column,separator):
-        split_row = row[target_column].split(separator)
-        for s in split_row:
-            new_row = row.to_dict()
-            new_row[target_column] = s
-            row_accumulator.append(new_row)
-    new_rows = []
-    df.apply(splitListToRows,axis=1,args = (new_rows,target_column,separator))
-    new_df = pd.DataFrame(new_rows)
-    return new_df
+def split_lines(lines, separator):
+    out_lines = []
+    def splitListToRows(line):
+        sentences = line.split(separator)
+        for s in sentences:
+            out_lines.append(s)
+    map(func.lower_case, lines)
+    return out_lines
