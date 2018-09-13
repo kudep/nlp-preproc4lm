@@ -21,7 +21,8 @@ num_pattern = r'[\d]{1,}'
 
 
 def skip_empty(in_line):
-    line =  in_line.strip()
+    line = str(in_line)
+    line =  line.strip()
     if line:
         return line
 

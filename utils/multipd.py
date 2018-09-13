@@ -11,6 +11,8 @@ from multiprocessing import Pool
 import utils.pdfunc as func
 import pandas as pd
 
+import traceback
+
 import collections
 
 FLAGS = lambda : None
@@ -51,8 +53,8 @@ def worker(in_file):
         word_counts = word_counts.tolist()
         word_counts = sum(word_counts, collections.Counter())
         return word_counts
-    except Exception as exc:
-        print(exc)
+    except Exception:
+        traceback.print_exc()
         return collections.Counter()
 
 def timeouted_worker(in_file):
