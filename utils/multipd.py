@@ -54,6 +54,7 @@ def worker(in_file):
         word_counts = sum(word_counts, collections.Counter())
         return word_counts
     except Exception:
+        print('Exception in file {}'.format(in_file))
         traceback.print_exc()
         return collections.Counter()
 
