@@ -10,6 +10,7 @@ import sys
 # from ufal.udpipe import Model, Pipeline
 
 import pandas as pd
+import collections
 
 from rusenttokenize import ru_sent_tokenize
 from nltk import word_tokenize
@@ -76,7 +77,7 @@ def _gen(elms):
         yield e
 
 def recovery(in_row):
-    in_line, rec = in_row['norm_text'], in_row['rec']
+    in_line, rec = in_row[0], in_row[1]
     line = in_line.strip(' ')
     tokens = line.split(' ')
     urls_gen = _gen(rec['found_urls'])
@@ -148,5 +149,17 @@ def split_lines(lines, separator):
         sentences = line.split(separator)
         for s in sentences:
             out_lines.append(s)
-    map(func.lower_case, lines)
+    list(map(splitListToRows, lines))
     return out_lines
+
+def chunk_generator(items_list, chunk_size):
+    for i in range(0, len(items_list), chunk_size):
+        yield items_list[i:i + chunk_size]
+
+def counters_merge(counters):
+    while len(counters) > 1:
+        count_pairs_gen = chunk_generator(counters, 2)
+        counters = []
+        for count_pair in count_pairs_gen:
+            counters.append(sum(count_pair, collections.Counter()))
+    return counters[-1] if counters else None
