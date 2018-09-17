@@ -39,6 +39,7 @@ def remove_tags(in_line):
     line = re.sub(repeat_math_tag_regexp, r" ", line)
     line = '\n'.join(line.split('<neli>'))
     line = re.sub(math_tag_regexp, r" ", line) #remove all math tags
+    return line
 
 def skip_empty(in_line):
     line = str(in_line)

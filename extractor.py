@@ -29,7 +29,7 @@ def main():
 
     files = list(glob(args.from_dir_pattern))
 
-    word_counts = multi.timeouted_run_pool(files,udpipeline,args.to_dir_prefix, cpu_n=args.cpu_n, timeout_duration=args.timeout_duration)
+    word_counts = multi.timeouted_run_pool(files,udpipeline, args.to_dir_prefix, cpu_n=args.cpu_n, timeout_duration=args.timeout_duration)
     word_count = sum(word_counts, collections.Counter())
 
     vocab = [ '%s\n' % word for word, _ in word_count.most_common()]
