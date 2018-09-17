@@ -32,7 +32,6 @@ def worker(in_file):
     try:
         out_file = FLAGS.out_dir_prefix + '/' + in_file.split('/')[-1]
         df = {'text':open(in_file).readlines()}
-        df['text'] = run_map(func.remove_tags, df['text'])
         df['text'] = run_map(func.skip_empty, df['text'])
         df['text'] = [line for line in df['text'] if line]
         df['rec'] =  run_map(func.get_rec_info, df['text'])

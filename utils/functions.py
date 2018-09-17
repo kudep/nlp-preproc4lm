@@ -20,26 +20,6 @@ url_pattern = r'(?i)\b((?:(https?|ftp):\/\/|www\d{0,3}[.]|[a-z0-9.\-]+[.][a-z]{2
 # tag_pattern = r'#[\S]*'
 num_pattern = r'[\d]{1,}'
 
-ref_name_tag_regexp = r'<ref name=.*?>'
-div_class_tag_regexp = r'<div class=.*?>'
-other_tag_regexp = r'</?\s?[^(math)(/math)(…)\.А-Яа-я0-9\"].{0,150}?>'
-repeat_math_tag_regexp = r'(</?math>[^А-Яа-я]{0,150}?)</?math>'
-math_tag_regexp = r'</?math*?>'
-
-
-def remove_tags(in_line):
-    line = str(in_line)
-    line =  line.strip()
-    line = re.sub(ref_name_tag_regexp, r" ", line) #remove <ref name=
-    line = re.sub(div_class_tag_regexp, r" ", line) #remove <div class=
-    line = re.sub(other_tag_regexp, r" ", line) #remove other tags
-    line = '<neli>'.join(line.split('\n'))
-    line = re.sub(repeat_math_tag_regexp, r" ", line) # degree of nesting 3 math tags
-    line = re.sub(repeat_math_tag_regexp, r" ", line)
-    line = re.sub(repeat_math_tag_regexp, r" ", line)
-    line = '\n'.join(line.split('<neli>'))
-    line = re.sub(math_tag_regexp, r" ", line) #remove all math tags
-    return line
 
 def skip_empty(in_line):
     line = str(in_line)
