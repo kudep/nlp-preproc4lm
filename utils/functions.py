@@ -15,40 +15,39 @@ import collections
 from rusenttokenize import ru_sent_tokenize
 from nltk import word_tokenize
 
-url_pattern = r'(?i)\b((?:(https?|ftp):\/\/|www\d{0,3}[.]|[a-z0-9.\-]+[.][a-z]{2,4}\/)(?:[^\s<>]|\(([^\s<>]+|(\([^\s<>]+\)))*\))+(?:\(([^\s<>]+|(\([^\s<>]+\)))*\)|[^\s`!\[\]{};:\'".,<>?\xab\xbb]))'
-# user_pattern = r'((RT ){0,1}@[\w\d]*?:{0,1}) '
-# tag_pattern = r'#[\S]*'
-num_pattern = r'[\d]{1,}'
 
+SHORT_LEN = 6
+EMPTY_LINE = '<empty_line>'
+def skip_short_line(in_lines):
+    pre_line_tokens, line_tokens = (str(line).strip().split() for line in in_lines)
+    if not(line_tokens):
+        return EMPTY_LINE
+    if not (len(line_tokens) < SHORT_LEN and len(pre_line_tokens) < SHORT_LEN):
+        return ' '.join(line_tokens)
 
-def skip_empty(in_line):
+MAX_DOT_PAIR = 4
+def skip_contents_line(in_line):
     line = str(in_line)
-    line =  line.strip()
-    if line:
+    if len(re.findall(r'\. \. ', line)) < MAX_DOT_PAIR:
         return line
 
-def get_rec_info(in_line):
-    line = in_line.strip()
-    found_urls = re.findall(url_pattern, line)
-    found_urls = [match[0] for match in found_urls]
-    # found_users = re.findall(user_pattern, line)
-    # found_users = [match[0] for match in found_users]
-    # found_tags = re.findall(tag_pattern, line)
-    found_nums = re.findall(num_pattern, line)
-    recovery_info = {'found_urls':found_urls,
-                   # 'found_users':found_users,
-                   # 'found_tags':found_tags,
-                   'found_nums':found_nums,
-                    }
-    return recovery_info
+def skip_spaced_line(in_line):
+    line = str(in_line)
+    max_spaces_n = len(line)//3
+    spaces_n = len(line.strip().split())
+    if spaces_n < max_spaces_n:
+        return line
 
-def spec_tok_add(in_line):
-    line = in_line.strip()
-    line = re.sub(url_pattern, ' <URL> ', line) # swap urls
-    # line = re.sub(user_pattern, ' <USR> ', line) # swap urls
-    # line = re.sub(tag_pattern, ' <HASHTAG> ', line) # swap urls
-    line = re.sub(num_pattern, ' <NUM> ', line) # swap urls
-    line = line.strip()
+def skip_not_char_line(in_line):
+    line = str(in_line)
+    max_char_n = len(line)//2
+    char_n = len(re.findall(r'[A-z]', line))
+    if char_n > max_char_n:
+        return line
+
+def remove_end_dash(in_line):
+    line = str(in_line)
+    line = re.sub(r'-\s{,}$','',line)
     return line
 
 def normalization1(in_line):
@@ -70,41 +69,6 @@ def normalization1(in_line):
     #----------------
     line = re.sub(r"\s+", r" ", line)
     line = re.sub(r'­', r'', line) # remove u00ad
-    return line
-
-def _gen(elms):
-    for e in elms:
-        yield e
-
-def recovery(in_row):
-    in_line, rec = in_row[0], in_row[1]
-    line = in_line.strip(' ')
-    tokens = line.split(' ')
-    urls_gen = _gen(rec['found_urls'])
-    # users_gen = _gen(rec['found_users'])
-    # tags_gen = _gen(rec['found_tags'])
-    nums_gen = _gen(rec['found_nums'])
-    urls_sample = next(urls_gen, None)
-    # users_sample = next(users_gen, None)
-    # tags_sample = next(tags_gen, None)
-    nums_sample = next(nums_gen, None)
-    out_tokens = []
-    for tok in tokens:
-        if urls_sample and tok=='<URL>':
-            out_tokens.append(urls_sample)
-            urls_sample = next(urls_gen, None)
-        # elif users_sample and tok=='<USR>':
-        #     out_tokens.append(users_sample.split()[-1])
-        #     users_sample = next(users_gen, None)
-        # elif tags_sample and tok=='<HASHTAG>':
-        #     out_tokens.append(tags_sample)
-        #     tags_sample = next(tags_gen, None)
-        elif nums_sample and tok=='<NUM>':
-            out_tokens.append(nums_sample)
-            nums_sample = next(nums_gen, None)
-        else:
-            out_tokens.append(tok)
-    line = ' '.join(out_tokens)
     return line
 
 
@@ -139,9 +103,6 @@ def normalization2(in_line):
         if sanitized_tokens:
             sanitized_sentences.append(' '.join(sanitized_tokens))
     return ' \n '.join(sanitized_sentences)
-
-def lower_case(in_line):
-    return in_line.lower()
 
 def split_lines(lines, separator):
     out_lines = []

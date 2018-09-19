@@ -32,10 +32,17 @@ def worker(in_file):
     try:
         out_file = FLAGS.out_dir_prefix + '/' + in_file.split('/')[-1]
         df = {'text':open(in_file).readlines()}
-        df['text'] = run_map(func.skip_empty, df['text'])
+        df['text'] = run_map(func.skip_short_line, zip(['token '*20] + df['text'][:-1],df['text']))
         df['text'] = [line for line in df['text'] if line]
-        df['rec'] =  run_map(func.get_rec_info, df['text'])
-        df['text'] = run_map(func.spec_tok_add, df['text'])
+        df['text'] = run_map(func.skip_contents_line, df['text'])
+        df['text'] = [line for line in df['text'] if line]
+        df['text'] = run_map(func.skip_spaced_line, df['text'])
+        df['text'] = [line for line in df['text'] if line]
+        df['text'] = run_map(func.skip_not_char_line, df['text'])
+        df['text'] = [line for line in df['text'] if line]
+        df['text'] = run_map(func.remove_end_dash, df['text'])
+        df['text'] = ' '.join(df['text'])
+        df['text'] = df['text'].split('<empty_line>')
 
         #Text normalization
         df['norm_text'] = run_map(func.normalization1, df['text'])
@@ -43,23 +50,17 @@ def worker(in_file):
         udpipe_sent_and_tok = func.get_udpipe_sent_and_tok(FLAGS.udpipeline)
         df['norm_text'] = run_map(udpipe_sent_and_tok, df['norm_text'])
         df['norm_text'] = run_map(func.normalization2, df['norm_text'])
-        df['rec_text'] = run_map(func.recovery, zip(df['norm_text'],df['rec']))
-        df['cleaned_text'] = run_map(func.lower_case, df['norm_text'])
-        df.pop('norm_text', None)
 
         #Prepare to save
-        df['rec_text'] = func.split_lines(df['rec_text'], '\n')
-        df['cleaned_text'] = func.split_lines(df['cleaned_text'], '\n')
+        df['norm_text'] = func.split_lines(df['norm_text'], '\n')
+        df['norm_text'] = [line for line in df['norm_text'] if line]
+        df['norm_text'] = list(set(df['norm_text']))
         with open(out_file+'.rec', 'wt') as fd:
-            run_map(lambda line: fd.write('%s\n' % str(line).strip()), df['rec_text'][:-1])
-            run_map(lambda line: fd.write('%s\n' % str(line).strip()), df['rec_text'][-1:])
-        df.pop('rec_text', None)
-        with open(out_file+'.clean', 'wt') as fd:
-            run_map(lambda line: fd.write('%s\n' % str(line).strip()), df['cleaned_text'][:-1])
-            run_map(lambda line: fd.write('%s\n' % str(line).strip()), df['cleaned_text'][-1:])
+            run_map(lambda line: fd.write('%s\n' % str(line).strip()), df['norm_text'][:-1])
+            run_map(lambda line: fd.write('%s\n' % str(line).strip()), df['norm_text'][-1:])
 
         #Count to words
-        word_counts = run_map(lambda line: collections.Counter(line.strip().split()), df['cleaned_text'])
+        word_counts = run_map(lambda line: collections.Counter(line.strip().split()), df['norm_text'])
         word_counts = func.counters_merge(word_counts) #sum(word_counts, collections.Counter())
         return word_counts
     except Exception:
