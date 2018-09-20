@@ -61,7 +61,8 @@ def worker(in_file):
 
         #Count to words
         word_counts = run_map(lambda line: collections.Counter(line.strip().split()), df['norm_text'])
-        word_counts = func.counters_merge(word_counts) #sum(word_counts, collections.Counter())
+        word_counts = func.counters_merge(word_counts)
+        word_counts = word_counts if word_counts else collections.Counter()
         return word_counts
     except Exception:
         print('Exception in file {}'.format(in_file))
