@@ -15,6 +15,7 @@ import collections
 from rusenttokenize import ru_sent_tokenize
 from nltk import word_tokenize
 
+# TODO: add a compilation of patterns
 url_pattern = r'(?i)\b((?:(https?|ftp):\/\/|www\d{0,3}[.]|[a-z0-9.\-]+[.][a-z]{2,4}\/)(?:[^\s<>]|\(([^\s<>]+|(\([^\s<>]+\)))*\))+(?:\(([^\s<>]+|(\([^\s<>]+\)))*\)|[^\s`!\[\]{};:\'".,<>?\xab\xbb]))'
 # user_pattern = r'((RT ){0,1}@[\w\d]*?:{0,1}) '
 # tag_pattern = r'#[\S]*'
@@ -48,6 +49,12 @@ def spec_tok_add(in_line):
     # line = re.sub(user_pattern, ' <USR> ', line) # swap urls
     # line = re.sub(tag_pattern, ' <HASHTAG> ', line) # swap urls
     line = re.sub(num_pattern, ' <NUM> ', line) # swap urls
+    line = line.strip()
+    return line
+
+def spec_url_tok_add(in_line):
+    line = in_line.strip()
+    line = re.sub(url_pattern, ' <URL> ', line) # swap urls
     line = line.strip()
     return line
 

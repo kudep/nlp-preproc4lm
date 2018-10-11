@@ -11,6 +11,13 @@ from utils import multi
 
 import collections
 
+def counts2vocab_freqs(word_counts):
+    word_count = sum(word_counts, collections.Counter())
+    vocab = [ '%s\n' % word for word, _ in word_count.most_common()]
+    vocab.append(word_count.most_common()[-1][0])
+    freqs = [ '{}\t{}\n'.format(word, freq) for word, freq in word_count.most_common()[:-1]]
+    return vocab, freqs
+
 
 def main():
     parser = argparse.ArgumentParser()
@@ -29,14 +36,21 @@ def main():
 
     files = list(glob(args.from_dir_pattern))
 
-    word_counts = multi.timeouted_run_pool(files, udpipeline, args.to_dir_prefix, cpu_n=args.cpu_n, timeout_duration=args.timeout_duration)
-    word_count = sum(word_counts, collections.Counter())
+    word_counts_tuples = multi.timeouted_run_pool(files, udpipeline, args.to_dir_prefix, cpu_n=args.cpu_n, timeout_duration=args.timeout_duration)
+    word_counts_tuples = list(zip(*word_counts_tuples)) # transpose
 
-    vocab = [ '%s\n' % word for word, _ in word_count.most_common()]
-    vocab.append(word_count.most_common()[-1][0])
+    url_less_word_counts = word_counts_tuples[0]
+    word_counts = word_counts_tuples[1]
+
+    url_less_vocab, url_less_word_freqs = counts2vocab_freqs(url_less_word_counts)
+    vocab, freqs = counts2vocab_freqs(word_counts)
+
+    # save url-less files
+    open(args.to_vocab_file+'-url_less-', 'wt').writelines(url_less_vocab)
+    open(args.to_vocab_file+'.freqs'+'-url_less-', 'wt').writelines(url_less_word_freqs)
+
+    # save url-less files
     open(args.to_vocab_file, 'wt').writelines(vocab)
-
-    freqs = [ '{}\t{}\n'.format(word, freq) for word, freq in word_count.most_common()[:-1]]
     open(args.to_vocab_file+'.freqs', 'wt').writelines(freqs)
 
 if __name__ == '__main__':

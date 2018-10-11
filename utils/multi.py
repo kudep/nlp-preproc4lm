@@ -6,6 +6,7 @@ import os
 import re
 import tqdm
 from multiprocessing import Pool
+import random
 
 import utils.functions as func
 
@@ -49,19 +50,33 @@ def worker(in_file):
 
         #Prepare to save
         df['rec_text'] = func.split_lines(df['rec_text'], '\n')
+        df['url_less_text'] = run_map(func.spec_url_tok_add, df['rec_text'])
         df['cleaned_text'] = func.split_lines(df['cleaned_text'], '\n')
+
         with open(out_file+'.rec', 'wt') as fd:
             run_map(lambda line: fd.write('%s\n' % str(line).strip()), df['rec_text'][:-1])
             run_map(lambda line: fd.write('%s\n' % str(line).strip()), df['rec_text'][-1:])
         df.pop('rec_text', None)
+
+        with open(out_file+'.url_less', 'wt') as fd:
+            run_map(lambda line: fd.write('%s\n' % str(line).strip()), df['url_less_text'][:-1])
+            run_map(lambda line: fd.write('%s\n' % str(line).strip()), df['url_less_text'][-1:])
+
         with open(out_file+'.clean', 'wt') as fd:
             run_map(lambda line: fd.write('%s\n' % str(line).strip()), df['cleaned_text'][:-1])
             run_map(lambda line: fd.write('%s\n' % str(line).strip()), df['cleaned_text'][-1:])
 
         #Count to words
+        url_less_word_counts = run_map(lambda line: collections.Counter(line.strip().split()), df['url_less_text'])
+        url_less_word_counts = func.counters_merge(url_less_word_counts) #sum(word_counts, collections.Counter())
+        df.pop('url_less_text', None)
+
+        #Count to words
         word_counts = run_map(lambda line: collections.Counter(line.strip().split()), df['cleaned_text'])
         word_counts = func.counters_merge(word_counts) #sum(word_counts, collections.Counter())
-        return word_counts
+
+        word_counts_tuple = (url_less_word_counts, word_counts)
+        return word_counts_tuple
     except Exception:
         print('Exception in file {}'.format(in_file))
         traceback.print_exc()
