@@ -32,17 +32,12 @@ def worker(in_file):
     try:
         out_file = FLAGS.out_dir_prefix + '/' + in_file.split('/')[-1]
         df = {'text':open(in_file).readlines()}
-        df['text'] = run_map(func.skip_short_line, zip(['token '*20] + df['text'][:-1],df['text']))
-        df['text'] = [line for line in df['text'] if line]
-        df['text'] = run_map(func.skip_contents_line, df['text'])
-        df['text'] = [line for line in df['text'] if line]
         df['text'] = run_map(func.skip_spaced_line, df['text'])
         df['text'] = [line for line in df['text'] if line]
         df['text'] = run_map(func.skip_not_char_line, df['text'])
         df['text'] = [line for line in df['text'] if line]
         df['text'] = run_map(func.remove_end_dash, df['text'])
         df['text'] = ' '.join(df['text'])
-        df['text'] = df['text'].split('<empty_line>')
 
         #Text normalization
         df['norm_text'] = run_map(func.normalization1, df['text'])

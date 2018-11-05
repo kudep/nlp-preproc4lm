@@ -16,21 +16,6 @@ from rusenttokenize import ru_sent_tokenize
 from nltk import word_tokenize
 
 
-SHORT_LEN = 6
-EMPTY_LINE = '<empty_line>'
-def skip_short_line(in_lines):
-    pre_line_tokens, line_tokens = (str(line).strip().split() for line in in_lines)
-    if not(line_tokens):
-        return EMPTY_LINE
-    if not (len(line_tokens) < SHORT_LEN and len(pre_line_tokens) < SHORT_LEN):
-        return ' '.join(line_tokens)
-
-MAX_DOT_PAIR = 4
-def skip_contents_line(in_line):
-    line = str(in_line)
-    if len(re.findall(r'\. \. ', line)) < MAX_DOT_PAIR:
-        return line
-
 def skip_spaced_line(in_line):
     line = str(in_line)
     max_spaces_n = len(line)//3
