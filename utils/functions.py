@@ -30,11 +30,6 @@ def skip_not_char_line(in_line):
     if char_n > max_char_n:
         return line
 
-def remove_end_dash(in_line):
-    line = str(in_line)
-    line = re.sub(r'-\s{,}$','',line)
-    return line
-
 def normalization1(in_line):
     line = in_line.strip()
     #----------------

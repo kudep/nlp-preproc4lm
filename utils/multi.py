@@ -36,8 +36,6 @@ def worker(in_file):
         df['text'] = [line for line in df['text'] if line]
         df['text'] = run_map(func.skip_not_char_line, df['text'])
         df['text'] = [line for line in df['text'] if line]
-        df['text'] = run_map(func.remove_end_dash, df['text'])
-        df['text'] = ' '.join(df['text'])
 
         #Text normalization
         df['norm_text'] = run_map(func.normalization1, df['text'])
