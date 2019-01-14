@@ -38,10 +38,9 @@ def worker(inout_file):
 
         out_file.parent.mkdir(parents=True, exist_ok=True)
         with out_file.open('wt') as fd:
-            for doc in df['docs'][:-1]:
+            for doc in df['docs']:
                 run_map(lambda line: fd.write('%s\n' % str(line).strip()), doc)
                 fd.write('\n')
-            run_map(lambda line: fd.write('%s\n' % str(line).strip()), df['docs'][-1])
     except Exception:
         print('Exception in file {}'.format(in_file))
         traceback.print_exc()
