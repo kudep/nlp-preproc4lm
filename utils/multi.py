@@ -34,6 +34,7 @@ def worker(inout_file):
         df = {'docs': in_file.open().readlines()}
         df['docs'] = run_map(json.loads, df['docs'])
         df['docs'] = run_map(func.doc2sentences, df['docs'])
+        df['docs'] = [doc for doc in df['docs'] if doc]
 
         out_file.parent.mkdir(parents=True, exist_ok=True)
         with out_file.open('wt') as fd:
