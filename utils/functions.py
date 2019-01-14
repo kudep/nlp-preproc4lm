@@ -127,7 +127,7 @@ def doc2sentences(doc):
     sentences = [change_url2urlhash(line) for line in sentences]
     sentences = [apply_regex(line, regex_norms) for line in sentences]
     sentences = [rm_diacritic(line) for line in sentences if line]
-    sentences = [split_punctuation(line) for line in sentences if line]
+    # sentences = [split_punctuation(line) for line in sentences if line]
     sentences = [apply_regex(line, regex_trash_rm) for line in sentences]
     sentences = [change_urlhash2url(line) for line in sentences if line]
     sentences = [line for line in sentences if len(line.strip()) > 1]
