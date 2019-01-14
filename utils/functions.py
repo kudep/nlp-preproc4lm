@@ -131,4 +131,7 @@ def doc2sentences(doc):
     sentences = [apply_regex(line, regex_trash_rm) for line in sentences]
     sentences = [change_urlhash2url(line) for line in sentences if line]
     sentences = [line for line in sentences if len(line.strip()) > 1]
+    sentences = sentences[1:]
+    if len(sentences) < 3:
+        return []
     return sentences
