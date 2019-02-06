@@ -30,16 +30,16 @@ from datetime import datetime
 def extract_json_data(data):
     if data.get('lang') == 'ru' and 'text' in data and 'created_at' in data:
         extracted_data = {}
-        if data.get('quoted_status_id') and 'text' in data.get('quoted_status'):
+        if data.get('quoted_status_id') and 'text' in data.get('quoted_status', {}):
             extracted_data['quoted_text'] = data['quoted_status']['text']
             extracted_data['quoted_status_id'] = data['quoted_status_id']
-        else:
-            extracted_data['in_reply_to_status_id'] = 0
+        # else:
+        #     extracted_data['in_reply_to_status_id'] = 0
 
         if data.get('in_reply_to_status_id'):
             extracted_data['in_reply_to_status_id'] = data['in_reply_to_status_id']
-        else:
-            extracted_data['in_reply_to_status_id'] = 0
+        # else:
+        #     extracted_data['in_reply_to_status_id'] = 0
 
         extracted_data['id'] = data['id']
         extracted_data['text'] = data['text']
@@ -126,7 +126,7 @@ def main():
     args = parser.parse_args()
 
     from_files = glob(args.from_dir_pattern)
-    from_files = [pathlib.Path(file).resolve() for file in from_files]
+    from_files = [str(pathlib.Path(file).resolve()) for file in from_files]
     files = list(zip(from_files, from_files))
 
     fin_data = timeouted_run_pool(files, cpu_n=args.cpu_n,
@@ -140,8 +140,9 @@ def main():
                                          'in_reply_to_status_id',
                                          ])
     df_ids = df[['id', 'quoted_status_id', 'in_reply_to_status_id']]
-    df.to_csv(args.to_file, index=False, header=False)
-    df_ids.to_csv(args.to_file[:-4]+'.ids.csv', index=False, header=False)
+    # df.to_csv(args.to_file, index=False, header=False)
+    df.to_pickle(args.to_file)
+    # df_ids.to_csv(args.to_file[:-4]+'.ids.csv', index=False, header=False)
 
 
 if __name__ == '__main__':
