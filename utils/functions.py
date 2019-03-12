@@ -2,100 +2,162 @@
 # -*- coding: utf-8 -*-
 
 
-import os
 import re
-#next level
-import unicodedata
 import sys
-# from ufal.udpipe import Model, Pipeline
-
-import pandas as pd
+import unicodedata
 import collections
+import hashlib
 
-from rusenttokenize import ru_sent_tokenize
 from nltk import word_tokenize
+from ru_sent_tokenize import ru_sent_tokenize
+
+# %%
+tags_rm = [
+    (re.compile(r"<ref name=.*?>"), " "),
+    (re.compile(r"<div class=.*?>"), " "),
+    (re.compile(r"</?\s?[^(math)(/math)(…)\.А-Яа-я0-9\"].{0,150}?>"), " "),
+]
+
+repeated_math_tag_rm = [(re.compile(r"(</?math>[^А-Яа-я]{0,150}?)</?math>"), " ")]
+
+math_tag_rm = [(re.compile(r"</?math*?>"), " ")]
 
 
-def skip_spaced_line(in_line):
-    line = str(in_line)
-    max_spaces_n = len(line)//3
-    spaces_n = len(line.strip().split())
-    if spaces_n < max_spaces_n:
-        return line
+regex_norms = [
+    (re.compile(r"&\w{0,};"), r""),  # &gt; less
+    (re.compile(r"quot;"), r""),  # quot; less
+    (re.compile(r"…"), r"..."),  # … -> ... (2026)
+    (re.compile(r"\?{1,}![\?!]+"), r"?!"),  # ?!???!! -> ?!
+    (re.compile(r"!{1,}\?[\?!]+"), r"?!"),  # ?!???!! -> ?!
+    (re.compile(r"!{3,}"), r"!!"),  # !!!!!!!! -> !!
+    (re.compile(r"\?{3,}"), r"??"),  # ???? -> ??
+    (re.compile(r"\.{4,}"), r"..."),  # ....... -> ...
+    (re.compile(r"[“”«»]"), r'"'),
+    (re.compile(r"’"), r"'"),
+    (re.compile(r"[`']{2,}"), r'"'),
+    (re.compile(r"[‐‑‒–—―-]{1,}"), r"-"),  # (2010)(2011)(2012)(2013)(2014)(2015)(2016) -> - (2012)
+    (re.compile(r"\s+"), r" "),
+    (re.compile(r"­"), r""),  # remove u00ad
+]
 
-def skip_not_char_line(in_line):
-    line = str(in_line)
-    max_char_n = len(line)//2
-    char_n = len(re.findall(r'[A-z]', line))
-    if char_n > max_char_n:
-        return line
+regex_trash_rm = [(re.compile(r"\(\s+\)"), r" "), (re.compile(r"\s+"), r" ")]
 
-def normalization1(in_line):
+
+def apply_regex(in_line, regexs):
     line = in_line.strip()
-    #----------------
-    line = re.sub(r'&\w{0,};', '', line) # &gt; less
-    line = re.sub(r'quot;', '', line) # quot; less
-    #----------------
-    line = re.sub(r'…', r'...', line) # … -> ... (2026)
-    line = re.sub(r'\?{1,}![\?!]+', r'?!', line) # ?!???!! -> ?!
-    line = re.sub(r'!{1,}\?[\?!]+', r'?!', line) # ?!???!! -> ?!
-    line = re.sub(r'!{3,}', r'!!', line) # !!!!!!!! -> !!
-    line = re.sub(r'\?{3,}', r'??', line) # ???? -> ??
-    line = re.sub(r'\.{4,}', r'...', line) # ....... -> ...
-    line = re.sub(r'[“”«»]', r'"', line) #
-    line = re.sub(r"’", r"'", line) #
-    line = re.sub(r"[`']{2,}", r'"', line) #
-    line = re.sub(r'[‐‑‒–—―-]{1,}', r'-', line) # (2010)(2011)(2012)(2013)(2014)(2015)(2016) -> - (2012)
-    #----------------
-    line = re.sub(r"\s+", r" ", line)
-    line = re.sub(r'­', r'', line) # remove u00ad
+    for regex, tgt in regexs:
+        line = regex.sub(tgt, line)
     return line
 
 
-def get_udpipe_sent_and_tok(udpipeline):
+def remove_tags(in_line):
+    line = str(in_line)
+    line = apply_regex(line, tags_rm)
+    line = "<neli>".join(line.split("\n"))
+    line = apply_regex(line, repeated_math_tag_rm)  # degree of nesting 3 math tags
+    line = apply_regex(line, repeated_math_tag_rm)
+    line = apply_regex(line, repeated_math_tag_rm)
+    line = "\n".join(line.split("<neli>"))
+    line = apply_regex(line, math_tag_rm)
+    return line
 
-    def udpipe_sent_and_tok(in_line):
-        line = udpipeline.process(in_line).split('\n')
-        return line
-    return udpipe_sent_and_tok
+
+combining_characters = dict.fromkeys([c for c in range(sys.maxunicode) if unicodedata.combining(chr(c))])
+
+
+def rm_diacritic(in_line):
+    sanitized_tokens = []
+    for token in in_line.split():
+        decomposed_token = unicodedata.normalize("NFD", token)
+        sanitized_token = decomposed_token.translate(combining_characters)
+        # Move bak reversed N with hat
+        sanitized_token = "".join(ch_san if ch not in "йЙ" else ch for ch, ch_san in zip(token, sanitized_token))
+        sanitized_token = unicodedata.normalize("NFC", sanitized_token)
+
+        sanitized_tokens.append(sanitized_token)
+    return " ".join(sanitized_tokens)
+
+
+def split_punctuation(in_line):
+    line = [" %s " % char if unicodedata.category(char).startswith("P") else char for char in in_line]
+    return "".join(line)
+
+
+url_pattern = re.compile(
+    r'(?i)\b((?:(https?|ftp):\/\/|www\d{0,3}[.]|[a-z0-9.\-]+[.][a-z]{2,4}\/)(?:[^\s<>]|\(([^\s<>]+|(\([^\s<>]+\)))*\))+(?:\(([^\s<>]+|(\([^\s<>]+\)))*\)|[^\s`!\[\]\(\)\*{}\;:\'".,<>?\xab\xbb]))'
+)
+
+hashurl_pattern = re.compile(r"urlhash256\w*")
+hash2url = {}
+
+
+def change_url2urlhash(line):
+    found_urls = url_pattern.findall(line)
+
+    found_urls = [match[0] for match in found_urls]
+    url2hash = [(url, "urlhash256" + hashlib.sha256(url.encode("utf-8")).hexdigest()) for url in found_urls]
+    for url, url_hash in url2hash:
+        line = line.replace(url, " " + url_hash + " ")
+        hash2url[url_hash] = url
+
+    return line
+
+
+def change_urlhash2url(line):
+    found_hashes = hashurl_pattern.findall(line)
+    for url_hash in found_hashes:
+        line = line.replace(url_hash, hash2url.get(url_hash, ""))
+    return line
+
+
+def doc2text(doc, skip_banned=True, add_title=True):
+    if (not skip_banned) or doc.get("banned", True):
+        title = str(doc.get("title", "")).strip() if add_title else ""
+        title = title if title[-1] in ".?!" else title + "."
+        cleaned_description = str(doc.get("cleaned_description", "")).strip()
+        cleaned_description = cleaned_description if cleaned_description[-1] in ".?!" else cleaned_description + "."
+        return (title + " " + cleaned_description).strip()
+    return ""
+
+
+def run_map(function, in_list):
+    return list(map(function, in_list))
 
 
 def nltk_sent_and_tok(in_line):
     sentences = ru_sent_tokenize(in_line)
-    line = [' '.join(word_tokenize(sentence)) for sentence in sentences]
+    line = [" ".join(word_tokenize(sentence)) for sentence in sentences]
     return line
 
-combining_characters = dict.fromkeys([c for c in range(sys.maxunicode)
-                                if unicodedata.combining(chr(c))])
-def normalization2(in_line):
-    sanitized_sentences=[]
-    for sentence in in_line:
-        tokens = sentence.split()
-        sanitized_tokens = []
-        for token in tokens:
-            decomposed_token = unicodedata.normalize('NFD', token)
-            sanitized_token = decomposed_token.translate(combining_characters)
-            # Move bak reversed N with hat
-            sanitized_token = ''.join(ch_san if ch not in 'йЙ' else ch for ch, ch_san in zip(token, sanitized_token))
-            sanitized_token = unicodedata.normalize('NFC', sanitized_token)
 
-            sanitized_tokens.append(sanitized_token)
-        if sanitized_tokens:
-            sanitized_sentences.append(' '.join(sanitized_tokens))
-    return ' \n '.join(sanitized_sentences)
+def docs2sentences(docs):
+    lines = run_map(doc2text, docs)
+    lines = run_map(lambda x: str(x).split("\n"), lines)
+    lines = sum(lines, [])
+    lines = [line.strip() for line in lines]
+    lines = [line for line in lines if line]
+    sentences = []
+    for line in lines:
+        sub_lines = ru_sent_tokenize(line)
+        sentences.extend(sub_lines)
 
-def split_lines(lines, separator):
-    out_lines = []
-    def splitListToRows(line):
-        sentences = line.split(separator)
-        for s in sentences:
-            out_lines.append(s)
-    list(map(splitListToRows, lines))
-    return out_lines
+    sentences_txt = "\n".join(sentences)
+    sentences_txt = remove_tags(sentences_txt)
+    sentences = sentences_txt.split("\n")
+
+    sentences = [change_url2urlhash(line) for line in sentences]
+    sentences = [apply_regex(line, regex_norms) for line in sentences]
+    sentences = [rm_diacritic(line) for line in sentences if line]
+    sentences = [apply_regex(line, regex_trash_rm) for line in sentences]
+    sentences = [change_urlhash2url(line) for line in sentences if line]
+    sentences = [line for line in sentences if len(line.strip()) > 1]
+    return sentences
+
 
 def chunk_generator(items_list, chunk_size):
     for i in range(0, len(items_list), chunk_size):
-        yield items_list[i:i + chunk_size]
+        yield items_list[i : i + chunk_size]
+
 
 def counters_merge(counters):
     while len(counters) > 1:

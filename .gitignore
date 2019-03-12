@@ -102,6 +102,7 @@ ENV/
 
 #IDEA
 .idea/
+.vscode/
 
 #Atom IDE
 .ftpconfig
