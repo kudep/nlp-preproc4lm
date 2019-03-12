@@ -113,9 +113,13 @@ def change_urlhash2url(line):
 def doc2text(doc, skip_banned=True, add_title=True):
     if (not skip_banned) or doc.get("banned", True):
         title = str(doc.get("title", "")).strip() if add_title else ""
-        title = title if title[-1] in ".?!" else title + "."
+        title = title if not (title) or title[-1] in ".?!" else title + "."
         cleaned_description = str(doc.get("cleaned_description", "")).strip()
-        cleaned_description = cleaned_description if cleaned_description[-1] in ".?!" else cleaned_description + "."
+        cleaned_description = (
+            cleaned_description
+            if not (cleaned_description) or cleaned_description[-1] in ".?!"
+            else cleaned_description + "."
+        )
         return (title + " " + cleaned_description).strip()
     return ""
 
@@ -124,10 +128,8 @@ def run_map(function, in_list):
     return list(map(function, in_list))
 
 
-def nltk_sent_and_tok(in_line):
-    sentences = ru_sent_tokenize(in_line)
-    line = [" ".join(word_tokenize(sentence)) for sentence in sentences]
-    return line
+def tokenize(sentence):
+    return " ".join(word_tokenize(sentence))
 
 
 def docs2sentences(docs):
@@ -140,7 +142,6 @@ def docs2sentences(docs):
     for line in lines:
         sub_lines = ru_sent_tokenize(line)
         sentences.extend(sub_lines)
-
     sentences_txt = "\n".join(sentences)
     sentences_txt = remove_tags(sentences_txt)
     sentences = sentences_txt.split("\n")
@@ -149,6 +150,7 @@ def docs2sentences(docs):
     sentences = [apply_regex(line, regex_norms) for line in sentences]
     sentences = [rm_diacritic(line) for line in sentences if line]
     sentences = [apply_regex(line, regex_trash_rm) for line in sentences]
+    sentences = run_map(tokenize, sentences)
     sentences = [change_urlhash2url(line) for line in sentences if line]
     sentences = [line for line in sentences if len(line.strip()) > 1]
     return sentences

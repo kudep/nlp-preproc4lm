@@ -5,10 +5,10 @@
 import json
 import traceback
 from multiprocessing import Pool
-
+import pathlib
 import tqdm
 
-import utils.functions as func
+import utils.functions as fn
 
 
 def FLAGS():
@@ -28,11 +28,11 @@ def timeout_initializer(out_dir_prefix, timeout_duration):
 
 def worker(in_file):
     try:
-        out_file = FLAGS.out_dir_prefix + "/" + in_file.split("/")[-1]
-        docs = json.load(open(in_file))
-        sentences = func.docs2sentences(docs)
-        with open(out_file + ".rec", "wt") as fd:
-            map(lambda line: fd.write("%s\n" % str(line).strip()), sentences)
+        out_file = FLAGS.out_dir_prefix / in_file.with_suffix(".txt").name
+        docs = json.load(in_file.open())
+        sentences = fn.docs2sentences(docs)
+        with out_file.open("wt") as fd:
+            fn.run_map(lambda line: fd.write("%s\n" % str(line).strip()), sentences)
 
     except Exception:
         print("Exception in file {}".format(in_file))

@@ -4,9 +4,11 @@
 import os
 import argparse
 from glob import glob
+import pathlib
 
 
-from .utils import multi
+from utils import multi
+from utils import functions as fn
 
 
 def main():
@@ -19,9 +21,12 @@ def main():
 
     os.makedirs(args.to_dir_prefix, exist_ok=True)
 
-    files = list(glob(args.from_dir_pattern))
+    files = glob(args.from_dir_pattern)
+    files = fn.run_map(pathlib.Path, files)
 
-    multi.timeouted_run_pool(files, args.to_dir_prefix, cpu_n=args.cpu_n, timeout_duration=args.timeout_duration)
+    multi.timeouted_run_pool(
+        files, pathlib.Path(args.to_dir_prefix), cpu_n=args.cpu_n, timeout_duration=args.timeout_duration
+    )
 
 
 if __name__ == "__main__":
