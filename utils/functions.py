@@ -179,7 +179,8 @@ def docs2sentences(docs, alphabet, vocab):
     sentences = [drop_useless_chars(line, alphabet) for line in sentences if line]
     # st7_len = len(sentences)
 
-    sentences = [line for line in sentences if len(line.strip()) > 1]
+    sentences = [line.strip() for line in sentences]
+    sentences = [line for line in sentences if len(line.split) > 3]
     sentences = [line for line in sentences if len(line) > 5]
     sentences = [line for line in sentences if sentense_out_of_vocab(line, vocab)]
     # st8_len = len(sentences)
