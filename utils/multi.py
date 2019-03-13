@@ -5,32 +5,16 @@
 import json
 import traceback
 from multiprocessing import Pool
-import pathlib
 import tqdm
 
 import utils.functions as fn
 
 
-def FLAGS():
-    return None
-
-
-def initializer(out_dir_prefix):
-    global FLAGS
-    FLAGS.out_dir_prefix = out_dir_prefix
-
-
-def timeout_initializer(out_dir_prefix, timeout_duration):
-    initializer(out_dir_prefix)
-    global FLAGS
-    FLAGS.timeout_duration = timeout_duration
-
-
-def worker(in_file):
+def worker(args):
     try:
-        out_file = FLAGS.out_dir_prefix / in_file.with_suffix(".txt").name
+        in_file, out_file, alphabet, vocab = args
         docs = json.load(in_file.open())
-        sentences = fn.docs2sentences(docs)
+        sentences = fn.docs2sentences(docs, alphabet, vocab)
         with out_file.open("wt") as fd:
             fn.run_map(lambda line: fd.write("%s\n" % str(line).strip()), sentences)
 
@@ -39,8 +23,10 @@ def worker(in_file):
         traceback.print_exc()
 
 
-def timeouted_worker(in_file):
+def timeouted_worker(args):
     import signal
+
+    in_file, out_file, alphabet, vocab, timeout_duration = args
 
     class TimeoutError(Exception):
         pass
@@ -50,9 +36,9 @@ def timeouted_worker(in_file):
 
     # set the timeout handler
     signal.signal(signal.SIGALRM, handler)
-    signal.alarm(FLAGS.timeout_duration)
+    signal.alarm(timeout_duration)
     try:
-        word_count = worker(in_file)
+        word_count = worker((in_file, out_file, alphabet, vocab))
     except TimeoutError as exc:
         print(exc)
         word_count = None
@@ -61,19 +47,10 @@ def timeouted_worker(in_file):
     return word_count
 
 
-def run_pool(in_files, out_dir_prefix, cpu_n=1):
+def run_pool(worker, worker_args, cpu_n=1):
     # Using initializer and  multi_preprocessing functions from this module
-    with Pool(cpu_n, initializer, initargs=[out_dir_prefix]) as p:
+    with Pool(cpu_n) as p:
         rets = []
-        for process_ret in tqdm.tqdm(p.imap_unordered(worker, in_files), total=len(in_files)):
-            rets.append(process_ret)
-    return rets
-
-
-def timeouted_run_pool(in_files, out_dir_prefix, cpu_n=1, timeout_duration=40 * 60):
-    # Using initializer and  multi_preprocessing functions from this module
-    with Pool(cpu_n, timeout_initializer, initargs=[out_dir_prefix, timeout_duration]) as p:
-        rets = []
-        for process_ret in tqdm.tqdm(p.imap_unordered(timeouted_worker, in_files), total=len(in_files)):
+        for process_ret in tqdm.tqdm(p.imap_unordered(worker, worker_args), total=len(worker_args)):
             rets.append(process_ret)
     return rets

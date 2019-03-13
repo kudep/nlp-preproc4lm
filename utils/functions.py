@@ -111,7 +111,7 @@ def change_urlhash2url(line):
 
 
 def doc2text(doc, skip_banned=True, add_title=True):
-    if (not skip_banned) or doc.get("banned", True):
+    if skip_banned or doc.get("banned", True):
         title = str(doc.get("title", "")).strip() if add_title else ""
         title = title if not (title) or title[-1] in ".?!" else title + "."
         cleaned_description = str(doc.get("cleaned_description", "")).strip()
@@ -132,19 +132,41 @@ def tokenize(sentence):
     return " ".join(word_tokenize(sentence))
 
 
-def docs2sentences(docs):
+def drop_useless_chars(sentence, alphabet=None):
+    if alphabet:
+        return "".join(run_map(lambda ch: ch if ch in alphabet else "", sentence))
+    else:
+        return sentence
+
+
+def sentense_out_of_vocab(sentence, vocab, trashhold=3, outof_partition=0.3):
+    words = sentence.split()
+    outof_count = len([None for w in words if w in vocab])
+    return outof_count < trashhold and outof_count < len(words) * outof_partition
+
+
+def docs2sentences(docs, alphabet, vocab):
     lines = run_map(doc2text, docs)
+    st1_len = len(lines)
+
     lines = run_map(lambda x: str(x).split("\n"), lines)
     lines = sum(lines, [])
+    st2_len = len(lines)
+
     lines = [line.strip() for line in lines]
     lines = [line for line in lines if line]
+    st3_len = len(lines)
+
     sentences = []
     for line in lines:
         sub_lines = ru_sent_tokenize(line)
         sentences.extend(sub_lines)
+    st4_len = len(sentences)
+
     sentences_txt = "\n".join(sentences)
     sentences_txt = remove_tags(sentences_txt)
     sentences = sentences_txt.split("\n")
+    st5_len = len(sentences)
 
     sentences = [change_url2urlhash(line) for line in sentences]
     sentences = [apply_regex(line, regex_norms) for line in sentences]
@@ -152,7 +174,24 @@ def docs2sentences(docs):
     sentences = [apply_regex(line, regex_trash_rm) for line in sentences]
     sentences = run_map(tokenize, sentences)
     sentences = [change_urlhash2url(line) for line in sentences if line]
+    st6_len = len(sentences)
+
+    sentences = [drop_useless_chars(line, alphabet) for line in sentences if line]
+    st7_len = len(sentences)
+
     sentences = [line for line in sentences if len(line.strip()) > 1]
+    sentences = [line for line in sentences if len(line) > 5]
+    sentences = [line for line in sentences if sentense_out_of_vocab(line, vocab)]
+    st8_len = len(sentences)
+    # print('st1_len = {}'.format(st1_len))
+    # print('st2_len/st1_len = {}'.format(st2_len/st1_len))
+    # print('st3_len/st1_len = {}'.format(st3_len/st1_len))
+    # print('st4_len/st1_len = {}'.format(st4_len/st1_len))
+    # print('st5_len/st1_len = {}'.format(st5_len/st1_len))
+    # print('st6_len/st1_len = {}'.format(st6_len/st1_len))
+    # print('st7_len/st1_len = {}'.format(st7_len/st1_len))
+    # print('st8_len/st1_len = {}'.format(st8_len/st1_len))
+
     return sentences
 
 
@@ -168,3 +207,13 @@ def counters_merge(counters):
         for count_pair in count_pairs_gen:
             counters.append(sum(count_pair, collections.Counter()))
     return counters[-1] if counters else None
+
+
+# %%
+import collections
+
+c = collections.Counter("123")
+# %%
+c.update(" ")
+"r" in c
+
