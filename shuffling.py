@@ -43,7 +43,8 @@ def main():
     random.shuffle(data_lines)
     data_chunks = fn.chunk_generator(data_lines, args.line_per_file)
     for i, data_chunk in enumerate(data_chunks):
-        to_file = to_dir_prefix / f'part_{i:03d}'
+        to_file = to_dir_prefix / f'part_{i:04d}'
+        data_chunk = [line.split() for line in data_chunk]
         to_file.open('wt').write('\n'.join(data_chunk))
 
 
