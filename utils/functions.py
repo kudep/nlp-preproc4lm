@@ -207,13 +207,3 @@ def counters_merge(counters):
         for count_pair in count_pairs_gen:
             counters.append(sum(count_pair, collections.Counter()))
     return counters[-1] if counters else None
-
-
-# %%
-import collections
-
-c = collections.Counter("123")
-# %%
-c.update(" ")
-"r" in c
-
