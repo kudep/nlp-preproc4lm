@@ -147,26 +147,26 @@ def sentense_out_of_vocab(sentence, vocab, trashhold=3, outof_partition=0.3):
 
 def docs2sentences(docs, alphabet, vocab):
     lines = run_map(doc2text, docs)
-    st1_len = len(lines)
+    # st1_len = len(lines)
 
     lines = run_map(lambda x: str(x).split("\n"), lines)
     lines = sum(lines, [])
-    st2_len = len(lines)
+    # st2_len = len(lines)
 
     lines = [line.strip() for line in lines]
     lines = [line for line in lines if line]
-    st3_len = len(lines)
+    # st3_len = len(lines)
 
     sentences = []
     for line in lines:
         sub_lines = ru_sent_tokenize(line)
         sentences.extend(sub_lines)
-    st4_len = len(sentences)
+    # st4_len = len(sentences)
 
     sentences_txt = "\n".join(sentences)
     sentences_txt = remove_tags(sentences_txt)
     sentences = sentences_txt.split("\n")
-    st5_len = len(sentences)
+    # st5_len = len(sentences)
 
     sentences = [change_url2urlhash(line) for line in sentences]
     sentences = [apply_regex(line, regex_norms) for line in sentences]
@@ -174,15 +174,15 @@ def docs2sentences(docs, alphabet, vocab):
     sentences = [apply_regex(line, regex_trash_rm) for line in sentences]
     sentences = run_map(tokenize, sentences)
     sentences = [change_urlhash2url(line) for line in sentences if line]
-    st6_len = len(sentences)
+    # st6_len = len(sentences)
 
     sentences = [drop_useless_chars(line, alphabet) for line in sentences if line]
-    st7_len = len(sentences)
+    # st7_len = len(sentences)
 
     sentences = [line for line in sentences if len(line.strip()) > 1]
     sentences = [line for line in sentences if len(line) > 5]
     sentences = [line for line in sentences if sentense_out_of_vocab(line, vocab)]
-    st8_len = len(sentences)
+    # st8_len = len(sentences)
     # print('st1_len = {}'.format(st1_len))
     # print('st2_len/st1_len = {}'.format(st2_len/st1_len))
     # print('st3_len/st1_len = {}'.format(st3_len/st1_len))
