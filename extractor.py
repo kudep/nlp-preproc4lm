@@ -1,56 +1,23 @@
 # %%
-import pprint
-import pandas as pd
+import json
 import random
-import tqdm
 import glob
 import logging
 import re
-import collections
-import json
 import pathlib
-from multiprocessing import Pool
 
 logFormatter = "%(asctime)s - %(levelname)s - %(message)s"
 logging.basicConfig(format=logFormatter, level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
 random.seed(315)
-dialog_size = 10
 valid_part = 0.001
-utters_min = 6
-cpu_n = 8
-counter_enable = False
 
 # %%
 glob_src = "/home/den/Documents/chit-chat_2019/data/toloka_dialogues/src/dialogues_validated_0403.json"
 prefix_tgt = "/home/den/Documents/chit-chat_2019/data/toloka_dialogues/tgt/clean"
 prefix_tgt = "/home/den/Documents/chit-chat_2019/data/toloka_dialogues/validated_tgt/clean"
-# counter_tgt = '/home/den/Documents/chit-chat_2019/data/sber_srt/d_srt/data/tgt/clean_shard_counter.txt'
-# path_src = '/home/den/Documents/chit-chat_2019/data/sber_srt/d_srt/data/tgt/src_parts/src_part_000.csv'
-# path_tgt = '/home/den/Documents/chit-chat_2019/data/sber_srt/d_srt/data/tgt/clean_shards/clean_shard_part_000.txt'
 pathlib.Path(prefix_tgt).parent.mkdir(511, True, True)
-
-
-def chunk_generator(items_list, chunk_size):
-    for i in range(0, len(items_list), chunk_size):
-        yield items_list[i : i + chunk_size]
-
-
-def smart_chunk_generator(items_list, chunk_size):
-    if chunk_size >= len(items_list):
-        yield items_list
-    tail_len = len(items_list) % chunk_size
-    if tail_len == 0:
-        for i in range(0, len(items_list), chunk_size):
-            yield items_list[i : i + chunk_size]
-    if tail_len != 0:
-        for i in range(0, len(items_list) - (chunk_size + tail_len), chunk_size):
-            yield items_list[i : i + chunk_size]
-        rest_items = items_list[-(chunk_size + tail_len) :]
-        split_point = len(rest_items) // 2
-        yield rest_items[:split_point]
-        yield rest_items[split_point:]
 
 
 def reg_apply(text, regs):
@@ -120,9 +87,6 @@ def merge_utters(dialog):
     return utters
 
 
-# sample = slice_0[0]
-
-
 def form_struct(sample):
     dialogs = []
     personas = {
@@ -153,7 +117,7 @@ def json2txt_dialogs(in_files):
         dialogs = []
         for sample in samples:
             dialogs.extend(form_struct(sample))
-        # random.shuffle(dialogs)
+        random.shuffle(dialogs)
         print(len(dialogs))
         for dialog in dialogs:
             utter_pairs = list(zip(dialog["utters"][::2], dialog["utters"][1::2]))
@@ -166,36 +130,12 @@ def json2txt_dialogs(in_files):
             if not (dial_lines):
                 continue
             lines.extend(dial_lines)
-            # if random.random() <= 0.02:
-            #     out_d_valid.write("\n".join(lines))
-            #     out_d_valid.write("\n")
-            # else:
-            out_d_train.write("\n".join(lines))
-            out_d_train.write("\n")
+            if random.random() <= valid_part:
+                out_d_valid.write("\n".join(lines))
+                out_d_valid.write("\n")
+            else:
+                out_d_train.write("\n".join(lines))
+                out_d_train.write("\n")
 
 
 json2txt_dialogs(in_files)
-
-# %%
-# if counter_enable:
-#     logger.info('Start countying freq utters')
-#     counters = run_pool(in_files, csv2counter_worker, cpu_n)
-#     logger.info('Start merging counters')
-#     counter = counters_merge(counters)
-#     with open(counter_tgt, 'wt') as cnt_d:
-#         [cnt_d.write(f'{k}\t{v}\n')for k, v in counter.most_common()]
-# else:
-#     logger.info('Start converting from csv to txt')
-#     files = zip(in_files, out_files)
-#     counter = collections.Counter()
-#     with open(counter_tgt) as cnt_d:
-#         for i in range(1000):
-#             pair = cnt_d.readline().split('\t')
-#             if len(pair) == 2:
-#                 counter[str(pair[0])] = int(pair[1])
-#     counter = dict(counter.most_common(1000))
-#     for k in counter:
-#         counter[k] = 1000/counter[k]
-#     files = [(i, o, counter) for i, o in files]
-#     run_pool(files, csv2txt_dialogs_worker, cpu_n)
-# csv2txt_dialogs_worker(files[1])
