@@ -1,0 +1,1 @@
+for i in *.valid.txt; do ; head -n 20 $i >> head20tail20.valid.txt; tail -n 20 $i >> head20tail20.valid.txt; ; done;
