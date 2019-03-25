@@ -5,9 +5,12 @@
 import pathlib
 import random
 import json
+import collections
+import pprint
 
 from_dir = pathlib.Path("/home/den/Documents/chit-chat_2019/data/alice_dialogs")
 to_dir = from_dir / "tgt"
+to_dir = from_dir / "tgt_2019_03_25"
 in_csv1 = from_dir / "Alice2Alice (2).csv"
 in_csv2 = from_dir / "Alice2AliceFromAggregatedDialogs1.csv"
 in_csv3 = from_dir / "Alice2AliceFromAggregatedDialogs2.csv"
@@ -41,7 +44,14 @@ def dialog_split(data):
         if utter == "\t\n":
             dialogs.append([])
         else:
-            dialogs[-1].append(utter[4:])
+            dialogs[-1].append(utter.strip().split("\t")[-1])
+    new_dialogs = []
+    for utters in dialogs:
+        while utters and utters[-1] == "Вот что я могу:":
+            utters.pop()
+        if utters:
+            new_dialogs.append(utters)
+    dialogs = new_dialogs
     dialog_lines = []
     for dialog in dialogs:
         if len(dialog) > 1:
@@ -52,10 +62,63 @@ def dialog_split(data):
     return dialog_lines
 
 
-def csv2txt_dialogs(in_csv, out_txt):
-    out_txt.parent.mkdir(511, True, True)
+def csv2txt_dialogs(in_csv):
     data = in_csv.open("rt", encoding="utf-16le").readlines()
     dialog_lines = dialog_split(data)
+    random.shuffle(dialog_lines)
+    return dialog_lines
+
+
+def collapse_repeating(msgs):
+    new_msgs = []
+    for msg, next_msg in zip(msgs, msgs[1:]):
+        if msg["text"] != next_msg["text"]:
+            new_msgs.append(msg)
+    if msgs:
+        new_msgs.append(msgs[-1])
+    return new_msgs
+
+
+def collapse_user_utterts_serials(msgs):
+    utters = []
+    side = None
+    for msg in msgs:
+        if side != msg["side"]:
+            utters.append([msg["text"]])
+            side = msg["side"]
+        else:
+            utters[-1].append(msg["text"])
+
+    if utters:
+        utters = [" ".join(serial) for serial in utters]
+    return utters
+
+
+def json_msgs_preproc(msgs):
+    msgs.sort(key=lambda x: x["id"])
+
+    new_msgs = collapse_repeating(msgs)
+    while len(new_msgs) != len(msgs):
+        msgs.clear()
+        msgs.extend(new_msgs)
+        new_msgs = collapse_repeating(msgs)
+    msgs.clear()
+    msgs.extend(new_msgs)
+    utters = collapse_user_utterts_serials(msgs)
+    return utters
+
+
+def json2txt_dialogs(in_json, out_txt):
+    out_txt.parent.mkdir(511, True, True)
+    js = json.load(in_json.open())
+    dialogs = [dialog["messages"] for dialog in js["data"]]
+    dialogs = [json_msgs_preproc(dialog) for dialog in dialogs]
+    dialog_lines = []
+    for dialog in dialogs:
+        if len(dialog) > 1:
+            dialog = preproc_dial(dialog)
+            dialog_lines.append(list(zip(dialog[::2], dialog[1::2])))
+            dialog_lines.append(list(zip(dialog[1::2], dialog[2::2])))
     random.shuffle(dialog_lines)
     with out_txt.with_suffix(".train.txt").open("wt") as out_d_train, out_txt.with_suffix(".valid.txt").open(
         "wt"
@@ -74,17 +137,21 @@ def csv2txt_dialogs(in_csv, out_txt):
                 out_d_train.write("\n")
 
 
-def json2txt_dialogs(in_json, out_txt):
-    out_txt.parent.mkdir(511, True, True)
-    js = json.load(in_json.open())
-    dialogs = [dialog["messages"] for dialog in js["data"]]
-    dialogs = [list(reversed([msg["text"] for msg in dialog])) for dialog in dialogs]
+def get_uniq_dialogs(dialog_lines):
+    uniq_dialog_lines = []
+    for dialog_line in dialog_lines:
+        uniq_dialog_lines.append("|".join(["->".join(uts) for uts in dialog_line]))
+    uniq_dialog_lines = set(uniq_dialog_lines)
     dialog_lines = []
-    for dialog in dialogs:
-        if len(dialog) > 1:
-            dialog = preproc_dial(dialog)
-            dialog_lines.append(list(zip(dialog[::2], dialog[1::2])))
-            dialog_lines.append(list(zip(dialog[1::2], dialog[2::2])))
+    for uniq_dial in uniq_dialog_lines:
+        lines = uniq_dial.split("|")
+        if lines:
+            dialog_lines.append([line.split("->") for line in lines if line])
+    return dialog_lines
+
+
+def write2file(dialog_lines, out_txt):
+    out_txt.parent.mkdir(511, True, True)
     random.shuffle(dialog_lines)
     with out_txt.with_suffix(".train.txt").open("wt") as out_d_train, out_txt.with_suffix(".valid.txt").open(
         "wt"
@@ -104,8 +171,12 @@ def json2txt_dialogs(in_json, out_txt):
 
 
 # %%
-csv2txt_dialogs(in_csv1, to_dir / "file1")
-csv2txt_dialogs(in_csv2, to_dir / "file2")
-csv2txt_dialogs(in_csv3, to_dir / "file3")
+dialog_lines = []
+dialog_lines.extend(csv2txt_dialogs(in_csv1))
+dialog_lines.extend(csv2txt_dialogs(in_csv2))
+dialog_lines.extend(csv2txt_dialogs(in_csv3))
+dialog_lines = get_uniq_dialogs(dialog_lines)
+write2file(dialog_lines, to_dir / "file")
 
-json2txt_dialogs(in_json, to_dir / "json_file")
+# json2txt_dialogs(in_json, to_dir / "json_file")
+
