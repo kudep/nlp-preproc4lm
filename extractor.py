@@ -7,6 +7,8 @@ import re
 import pathlib
 import yandex_spellcheck_api
 import tqdm
+import difflib
+
 # import pprint
 from nltk import word_tokenize
 from mosestokenizer import MosesDetokenizer
@@ -139,7 +141,7 @@ def text_shards_spellcheck(text_shards):
         for ret in tqdm.tqdm(p.imap(yandex_spellcheck_api.send, text_shards), total=len(text_shards)):
             rets.append(ret)
     pairs = [(i, j) for i, j in list(zip(text_shards, rets)) if i != j]
-    pprint.pprint(pairs)
+    # pprint.pprint(pairs)
     return rets
 
 
@@ -226,6 +228,17 @@ exceptions_vocab = [
 
 
 def gluing_utters(utters, context):
+    new_utters = []
+    for utter in utters:
+        src = utter[1:]
+        lower = src.lower()
+        ratio = difflib.SequenceMatcher(a=src, b=lower).ratio()
+        if (ratio >= 0.75 and len(utter) < 10) or (len(utter) > 10 and ratio >= 0.90):
+            new_utters.append(utter)
+        else:
+            new_utters.append(utter.lower())
+    utters = new_utters
+
     text_shards = []
     for utter, next_utter in zip(utters, utters[1:] + ["<EOM>"]):
         utter = utter.strip()
@@ -346,10 +359,12 @@ def json2txt_dialogs(in_files):
         print(len(samples))
         for sample in tqdm.tqdm(samples):
             dialogs.extend(form_struct(sample))
+        if SHUFFLE:
+            random.shuffle(dialogs)
         for dialog in dialogs:
             utter_pairs = list(zip(dialog["utters"][::2], dialog["utters"][1::2]))
             persona_offset = len(dialog["persona"]) + 1
-            lines = [f"{i} your persona: {persona.strip()}" for i, persona in enumerate(dialog["persona"], 1)]
+            lines = [f"{i} your persona: {persona.strip().lower()}" for i, persona in enumerate(dialog["persona"], 1)]
             dial_lines = [
                 f"{i} {utter1.strip()} \t{utter2.strip()}"
                 for i, (utter1, utter2) in enumerate(utter_pairs, persona_offset)
