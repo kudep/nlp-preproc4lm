@@ -22,11 +22,11 @@ def worker(args):
     try:
         df = {"utters": funcs.bz2file2utters(in_file)}
         df["utters"] = funcs.utters2utters(df["utters"])
-        return df["utters"]
+        return df["utters"], in_file
     except Exception:
         print("Exception in file {}".format(in_file))
         traceback.print_exc()
-        return []
+        return [], ''
 
 
 def timeout_worker(args):
@@ -46,16 +46,15 @@ def timeout_worker(args):
         return worker(args)
     except TimeoutError as exc:
         print(exc)
-        return []
+        return [], ''
     finally:
         signal.alarm(0)
 
 
 def main():
     parser = argparse.ArgumentParser()
-    # parser.add_argument("-d", "--from_dir_pattern", type=str)
     parser.add_argument(
-        "-d", "--from_dir_pattern", default="/tmp/workers/*.json.bz2", type=str
+        "-s", "--from_dir_pattern", default="/tmp/workers/*.json.bz2", type=str
     )
     parser.add_argument("-t", "--to_file", default="/tmp/workers/txt", type=str)
     parser.add_argument("-n", "--cpu_n", default=5, type=int)
@@ -69,11 +68,16 @@ def main():
     from_files = [pathlib.Path(file).resolve() for file in from_files]
     in_args = [(file, args.timeout_duration) for file in from_files]
 
-    with to_file.open("wt") as out_file:
+    with to_file.open("wt") as out_file, to_file.with_suffix('.log').open("wt") as out_log_file:
 
-        def write2file(lines):
+        def write2file(rets):
+            lines, file_path = rets
+            file_path = str(file_path)
+            out_log_file.write(f"{file_path}\n")
+            out_log_file.flush()
             for line in lines:
                 out_file.write(f"{line}\n")
+                out_file.flush()
 
         multi.run_pool(timeout_worker, in_args, cpu_n=args.cpu_n, ret_handler=write2file)
 
