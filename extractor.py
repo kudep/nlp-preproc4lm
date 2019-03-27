@@ -74,10 +74,10 @@ def main():
             lines, file_path = rets
             file_path = str(file_path)
             out_log_file.write(f"{file_path}\n")
-            out_log_file.flush()
             for line in lines:
                 out_file.write(f"{line}\n")
-                out_file.flush()
+            out_log_file.flush()
+            out_file.flush()
 
         multi.run_pool(timeout_worker, in_args, cpu_n=args.cpu_n, ret_handler=write2file)
 
